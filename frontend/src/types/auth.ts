@@ -14,6 +14,11 @@ export interface User {
   created_at: string;
   provider_type?: ProviderType;
   estimated_daily_meal_demand?: number;
+  location?: { type: string; coordinates: [number, number] };
+  latitude?: number;
+  longitude?: number;
+  nearest_hub_id?: string;
+  nearest_hub_name?: string;
 }
 
 export interface LoginPayload {
@@ -30,6 +35,8 @@ export interface ProviderSignupPayload {
   phone: string;
   address: string;
   provider_type: ProviderType;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface NgoSignupPayload {

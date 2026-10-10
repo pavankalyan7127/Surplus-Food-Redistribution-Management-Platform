@@ -1,9 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import {
   Utensils,
   PlusCircle,
   Truck,
-  Clock,
   MapPin,
   Phone,
   Mail,
@@ -102,7 +102,7 @@ export const ProviderDashboard: React.FC = () => {
         <Card
           title="Surplus Food Listings"
           subtitle="Trip Type 1: Provider &rarr; Collection Hub"
-          action={<Badge variant="emerald">Upcoming Feature</Badge>}
+          action={<Badge variant="emerald">Trip Type 1 Active</Badge>}
         >
           <div className="py-8 px-4 text-center">
             <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-100">
@@ -112,22 +112,23 @@ export const ProviderDashboard: React.FC = () => {
               Post Surplus Food Donation
             </h4>
             <p className="mt-2 text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-              Once active, you can declare excess cooked meals, baked items, or perishable produce with expiry windows and quantity estimation.
+              Declare excess cooked meals, baked items, or perishable produce with storage requirements and portion count.
             </p>
             <div className="mt-5">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                className="opacity-70 cursor-not-allowed"
-              >
-                <PlusCircle className="w-4 h-4 mr-1.5" />
-                Post Surplus Listing (Phase 2)
-              </Button>
+              <Link to="/provider/surplus-donations">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
+                >
+                  <PlusCircle className="w-4 h-4 mr-1.5" />
+                  Go to Surplus Donations Portal
+                </Button>
+              </Link>
             </div>
-            <div className="mt-4 inline-flex items-center gap-1.5 text-[11px] text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-              <Clock className="w-3.5 h-3.5" />
-              <span>Assigned to Team Member 1 &bull; Route clustering integration</span>
+            <div className="mt-4 inline-flex items-center gap-1.5 text-[11px] text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Trip Type 1 Active &bull; Automated Hub Route Clustering</span>
             </div>
           </div>
         </Card>

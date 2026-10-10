@@ -13,6 +13,22 @@ class Settings(BaseSettings):
 
     FRONTEND_ORIGIN: str = "http://localhost:5173"
 
+    # Trip Type 1 Geocoding & Routing Services
+    OSRM_BASE_URL: str = "https://router.project-osrm.org"
+    GEOCODING_PROVIDER: str = "nominatim"
+    GEOCODING_API_KEY: str = ""
+    MAP_STYLE_URL: str = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+    FOOD_SAFETY_MAX_HOURS: int = 12
+
+    # IoT Sensors & Food Quality Staging
+    SENSOR_API_URL: str = "http://10.249.180.92/api/data"
+    SENSOR_TIMEOUT_SECONDS: float = 6.0
+    SENSOR_SIMULATION_MODE: bool = False
+
+    # Gemini AI Expiration Prediction
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+
     model_config = SettingsConfigDict(
         env_file=(".env", "backend/.env", "../.env"),
         env_file_encoding="utf-8",

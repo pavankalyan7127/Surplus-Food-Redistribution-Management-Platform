@@ -7,7 +7,6 @@ import {
   Building2,
   Layers,
   Truck,
-  Activity,
   HeartHandshake,
   UserCheck,
 } from 'lucide-react';
@@ -34,7 +33,7 @@ export const DashboardLayout: React.FC = () => {
           homePath: '/provider/dashboard',
           navItems: [
             { label: 'Overview', path: '/provider/dashboard', icon: LayoutDashboard },
-            { label: 'Surplus Donations', path: '#surplus', icon: Sparkles, badge: 'Phase 2' },
+            { label: 'Surplus Donations', path: '/provider/surplus-donations', icon: Sparkles, badge: 'Trip 1' },
             { label: 'Collection Trips', path: '#trips', icon: Truck, badge: 'Phase 2' },
           ],
         };
@@ -46,9 +45,8 @@ export const DashboardLayout: React.FC = () => {
           homePath: '/hub/dashboard',
           navItems: [
             { label: 'Overview', path: '/hub/dashboard', icon: LayoutDashboard },
-            { label: 'Incoming Collections', path: '#incoming', icon: Truck, badge: 'Trip 1' },
-            { label: 'Inventory Staging', path: '#inventory', icon: Layers, badge: 'Phase 2' },
-            { label: 'IoT Monitoring', path: '#iot', icon: Activity, badge: 'Telemetry' },
+            { label: 'Incoming Collections', path: '/hub/incoming-collections', icon: Truck, badge: 'Trip 1' },
+            { label: 'Inventory', path: '/hub/inventory-staging', icon: Layers },
           ],
         };
       case 'ngo':

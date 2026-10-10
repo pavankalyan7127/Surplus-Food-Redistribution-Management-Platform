@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import {
   Building2,
   Layers,
@@ -9,10 +10,12 @@ import {
   MapPin,
   UserCheck,
   Radio,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
+import { Button } from '../../components/common/Button';
 
 export const HubDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -84,42 +87,58 @@ export const HubDashboard: React.FC = () => {
         <Card
           title="Inbound Collections"
           subtitle="Trip Type 1: Provider &rarr; Hub"
-          action={<Badge variant="slate">Team Member 1</Badge>}
+          action={<Badge variant="blue">Trip Type 1 Active</Badge>}
         >
           <div className="py-6 px-4 text-center">
-            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-3 border border-emerald-100">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 border border-blue-100">
               <Truck className="w-6 h-6" />
             </div>
             <h4 className="text-sm font-semibold text-slate-900">
-              No Incoming Collection Trips En Route
+              Inbound Collection Routing & Staging
             </h4>
             <p className="mt-1.5 text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-              When food providers submit surplus batches, collection route clusters will be generated and tracked here.
+              Real-time aggregation of provider surplus postings, automated threshold triggers, and interactive MapLibre fleet simulation.
             </p>
-            <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
-              Assigned to Team Member 1 &bull; Route optimization module
+            <div className="mt-4">
+              <Link to="/hub/incoming-collections">
+                <Button variant="primary" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                  Open Incoming Collections Command
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
+              </Link>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-blue-700 font-medium">
+              Trip Type 1 Active &bull; Multi-Stop 2-Opt Road Routing
             </div>
           </div>
         </Card>
 
         {/* Module 2: Hub Inventory Staging */}
         <Card
-          title="Inventory Staging"
+          title="Inventory Staging & Quality Verification"
           subtitle="Categorized food lots & shelf-life tracking"
-          action={<Badge variant="slate">Team Member 2</Badge>}
+          action={<Badge variant="emerald">Live Testing Active</Badge>}
         >
           <div className="py-6 px-4 text-center">
-            <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-3 border border-indigo-100">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-3 border border-emerald-100">
               <Layers className="w-6 h-6" />
             </div>
             <h4 className="text-sm font-semibold text-slate-900">
-              Hub Storage Currently Empty
+              Sensor Testing & AI Expiration Staging
             </h4>
             <p className="mt-1.5 text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-              Collected items verified upon arrival will enter active inventory staging awaiting NGO allocation.
+              Arrived surplus batches undergo multi-sensor compliance verification, feasibility scoring, and Gemini AI shelf-life prediction before entering inventory.
             </p>
-            <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
-              Assigned to Team Member 2 &bull; FIFO inventory allocation
+            <div className="mt-4">
+              <Link to="/hub/inventory-staging">
+                <Button variant="primary" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                  Open Inventory Staging
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
+              </Link>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-emerald-700 font-medium">
+              IoT Telemetry &bull; Feasibility Scoring &bull; Gemini AI Prediction
             </div>
           </div>
         </Card>

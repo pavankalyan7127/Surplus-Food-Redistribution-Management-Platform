@@ -8,6 +8,7 @@ from app.api.routes import (
     donations,
     health,
     hubs,
+    inventory,
     iot,
     ngos,
     providers,
@@ -67,6 +68,7 @@ app.include_router(hubs.router, prefix=API_PREFIX)
 app.include_router(ngos.router, prefix=API_PREFIX)
 app.include_router(donations.router, prefix=API_PREFIX)
 app.include_router(trips.router, prefix=API_PREFIX)
+app.include_router(inventory.router, prefix=API_PREFIX)
 app.include_router(iot.router, prefix=API_PREFIX)
 
 

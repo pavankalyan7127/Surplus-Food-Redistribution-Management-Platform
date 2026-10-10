@@ -36,3 +36,7 @@ class UserInDB(MongoBaseModel):
     # Role-specific fields
     provider_type: Optional[ProviderType] = None
     estimated_daily_meal_demand: Optional[int] = None
+
+    # GeoJSON Location: {"type": "Point", "coordinates": [longitude, latitude]}
+    location: Optional[dict] = None
+    nearest_hub_id: Optional[str] = None

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Building2,
   HeartHandshake,
+  MapPin,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Input } from '../../components/common/Input';
@@ -16,6 +17,7 @@ import { Button } from '../../components/common/Button';
 import { Alert } from '../../components/common/Alert';
 import { Card } from '../../components/common/Card';
 import { ProviderType } from '../../types/auth';
+import { trip1Api } from '../../api/trip1';
 
 const PROVIDER_TYPES: { value: ProviderType; label: string }[] = [
   { value: 'restaurant', label: 'Restaurant / Eatery' },
@@ -39,6 +41,12 @@ export const ProviderSignupPage: React.FC = () => {
     provider_type: 'restaurant' as ProviderType,
   });
 
+  const [latitude, setLatitude] = useState<number | ''>('');
+  const [longitude, setLongitude] = useState<number | ''>('');
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodeMessage, setGeocodeMessage] = useState<string | null>(null);
+  const [showManualPin, setShowManualPin] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +54,38 @@ export const ProviderSignupPage: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleVerifyLocation = async () => {
+    if (!formData.address.trim()) {
+      setError('Please enter an address before verifying location.');
+      return;
+    }
+    setIsGeocoding(true);
+    setGeocodeMessage(null);
+    try {
+      const res = await trip1Api.geocodePreview(formData.address.trim());
+      if (res.found && res.latitude !== null && res.longitude !== null) {
+        setLatitude(res.latitude);
+        setLongitude(res.longitude);
+        setShowManualPin(true);
+        setGeocodeMessage(
+          `Location successfully resolved: Latitude ${res.latitude.toFixed(6)}, Longitude ${res.longitude.toFixed(6)}`
+        );
+      } else {
+        setGeocodeMessage(
+          'Address could not be automatically pinpointed. You can enter precise coordinates manually below.'
+        );
+        setShowManualPin(true);
+      }
+    } catch {
+      setGeocodeMessage(
+        'Geocoding lookup unavailable. Please specify coordinates manually.'
+      );
+      setShowManualPin(true);
+    } finally {
+      setIsGeocoding(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,6 +111,8 @@ export const ProviderSignupPage: React.FC = () => {
         phone: formData.phone,
         address: formData.address,
         provider_type: formData.provider_type,
+        latitude: latitude !== '' ? Number(latitude) : undefined,
+        longitude: longitude !== '' ? Number(longitude) : undefined,
       });
 
       navigate('/login/provider', { state: { registered: true } });
@@ -239,14 +281,83 @@ export const ProviderSignupPage: React.FC = () => {
                 placeholder="contact@greentreecafe.com"
               />
 
-              <Input
-                label="Physical Address (Pickup Location)"
-                name="address"
-                required
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="123 Market Square, Suite 4B, City"
-              />
+              <div>
+                <Input
+                  label="Physical Address (Pickup Location)"
+                  name="address"
+                  required
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="123 Market Square, Suite 4B, City"
+                />
+
+                <div className="mt-1.5 flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    onClick={handleVerifyLocation}
+                    disabled={isGeocoding || !formData.address.trim()}
+                    className="text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>{isGeocoding ? 'Resolving Coordinates...' : 'Verify & Geocode Address'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowManualPin(!showManualPin)}
+                    className="text-slate-500 hover:text-slate-700 underline text-[11px]"
+                  >
+                    {showManualPin ? 'Hide Coordinate Controls' : 'Adjust Pin / Coordinates'}
+                  </button>
+                </div>
+
+                {geocodeMessage && (
+                  <p
+                    className={`mt-1.5 text-xs p-2 rounded border ${
+                      latitude !== ''
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                    }`}
+                  >
+                    {geocodeMessage}
+                  </p>
+                )}
+
+                {showManualPin && (
+                  <div className="mt-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200 grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="block text-slate-600 font-medium mb-1">
+                        Latitude
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={latitude}
+                        onChange={(e) =>
+                          setLatitude(e.target.value ? Number(e.target.value) : '')
+                        }
+                        placeholder="e.g. 13.0827"
+                        className="w-full text-xs rounded border border-slate-300 px-2 py-1.5"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 font-medium mb-1">
+                        Longitude
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={longitude}
+                        onChange={(e) =>
+                          setLongitude(e.target.value ? Number(e.target.value) : '')
+                        }
+                        placeholder="e.g. 80.2707"
+                        className="w-full text-xs rounded border border-slate-300 px-2 py-1.5"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <Input

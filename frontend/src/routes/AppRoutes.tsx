@@ -10,6 +10,9 @@ import { DashboardLayout } from '../layouts/DashboardLayout';
 import { ProviderDashboard } from '../pages/provider/ProviderDashboard';
 import { HubDashboard } from '../pages/hub/HubDashboard';
 import { NgoDashboard } from '../pages/ngo/NgoDashboard';
+import { SurplusDonationsPage } from '../pages/provider/SurplusDonationsPage';
+import { IncomingCollectionsPage } from '../pages/hub/IncomingCollectionsPage';
+import { InventoryStagingPage } from '../pages/hub/InventoryStagingPage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { UnauthorizedPage } from '../pages/Unauthorized';
 import { NotFoundPage } from '../pages/NotFound';
@@ -40,6 +43,15 @@ export const AppRoutes: React.FC = () => {
           }
         />
         <Route
+          path="/provider/surplus-donations"
+          element={
+            <ProtectedRoute allowedRole="provider">
+              <SurplusDonationsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/hub/dashboard"
           element={
             <ProtectedRoute allowedRole="hub">
@@ -47,6 +59,23 @@ export const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/hub/incoming-collections"
+          element={
+            <ProtectedRoute allowedRole="hub">
+              <IncomingCollectionsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/hub/inventory-staging"
+          element={
+            <ProtectedRoute allowedRole="hub">
+              <InventoryStagingPage />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/ngo/dashboard"
           element={

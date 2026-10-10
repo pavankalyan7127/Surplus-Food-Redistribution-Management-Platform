@@ -66,7 +66,7 @@ def get_current_user(
             detail="User account is inactive",
         )
 
-    return serialize_user_doc(user_doc)
+    return serialize_user_doc(user_doc, db=db)
 
 
 def require_role(allowed_role: UserRole) -> Callable[[UserResponse], UserResponse]:

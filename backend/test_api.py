@@ -123,14 +123,14 @@ def test_full_flow():
         assert hub_me.json()["role"] == "hub"
         print("OK: /api/v1/hubs/me accessible by Hub Admin")
 
-        print("\n--- 5. Testing Future Placeholders (501 Not Implemented) ---")
+        print("\n--- 5. Testing Trip Type 1 Endpoints & IoT Placeholder ---")
         donations_res = client.get("/api/v1/donations", headers=headers)
-        assert donations_res.status_code == 501, f"Expected 501, got {donations_res.status_code}"
-        print("OK: /api/v1/donations returned 501 Not Implemented for Team Member 1")
+        assert donations_res.status_code == 200, f"Expected 200, got {donations_res.status_code}"
+        print("OK: /api/v1/donations returned 200 (Trip Type 1 Active)")
 
         trips_res = client.get("/api/v1/trips", headers=headers)
-        assert trips_res.status_code == 501, f"Expected 501, got {trips_res.status_code}"
-        print("OK: /api/v1/trips returned 501 Not Implemented for Team Members 1 & 2")
+        assert trips_res.status_code == 200, f"Expected 200, got {trips_res.status_code}"
+        print("OK: /api/v1/trips returned 200 (Trip Type 1 Active)")
 
         iot_res = client.get("/api/v1/iot/telemetry", headers=hub_headers)
         assert iot_res.status_code == 501, f"Expected 501, got {iot_res.status_code}"
