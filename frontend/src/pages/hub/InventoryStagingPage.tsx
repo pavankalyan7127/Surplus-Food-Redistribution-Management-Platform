@@ -357,15 +357,39 @@ export const InventoryStagingPage: React.FC = () => {
                   key={item.id}
                   className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4 hover:border-emerald-200 transition-colors"
                 >
+                  {/* Red Indicator if Feasibility Score < 60% */}
+                  {item.feasibility_score < 0.6 && (
+                    <div className="bg-rose-50 border border-rose-200 rounded-lg p-2.5 flex items-center justify-between text-xs text-rose-900">
+                      <div className="flex items-center gap-2 font-bold">
+                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>Feasibility score below 60% &bull; Human review required before distribution.</span>
+                      </div>
+                      <span className="text-[10px] font-mono bg-rose-100 text-rose-800 px-2 py-0.5 rounded border border-rose-300 font-bold">
+                        {(item.feasibility_score * 100).toFixed(1)}% Score
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                     <div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
                           {item.provider_name || 'Food Provider'}
                         </span>
                         <Badge variant="emerald" size="sm">
                           AT_INVENTORY
                         </Badge>
+                        {item.feasibility_score < 0.6 ? (
+                          <Badge variant="rose" size="sm">
+                            <AlertTriangle className="w-3 h-3 mr-1 text-rose-600" />
+                            Human Review Required
+                          </Badge>
+                        ) : (
+                          <Badge variant="emerald" size="sm">
+                            <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
+                            Quality Verified
+                          </Badge>
+                        )}
                         <span className="text-xs text-slate-400 font-mono">
                           ID: {item.id.slice(-6)}
                         </span>
@@ -439,16 +463,37 @@ export const InventoryStagingPage: React.FC = () => {
                   </div>
 
                   {/* Summary Bar: Feasibility Score & Gemini AI Expiration */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-emerald-50/70 border border-emerald-200/80 rounded-lg p-3">
+                  <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg p-3 border ${
+                    item.feasibility_score < 0.6
+                      ? 'bg-rose-50/80 border-rose-300'
+                      : 'bg-emerald-50/70 border-emerald-200/80'
+                  }`}>
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-emerald-600 text-white rounded-lg">
-                        <ShieldCheck className="w-5 h-5" />
+                      <div className={`p-2 rounded-lg text-white ${
+                        item.feasibility_score < 0.6 ? 'bg-rose-600' : 'bg-emerald-600'
+                      }`}>
+                        {item.feasibility_score < 0.6 ? (
+                          <AlertTriangle className="w-5 h-5" />
+                        ) : (
+                          <ShieldCheck className="w-5 h-5" />
+                        )}
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-emerald-900">
-                          Composite Feasibility Score
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-semibold ${
+                            item.feasibility_score < 0.6 ? 'text-rose-950 font-bold' : 'text-emerald-900'
+                          }`}>
+                            Composite Feasibility Score
+                          </span>
+                          {item.feasibility_score < 0.6 && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-200 text-rose-900 border border-rose-300 animate-pulse">
+                              Human Review Required
+                            </span>
+                          )}
                         </div>
-                        <div className="text-lg font-black text-emerald-800">
+                        <div className={`text-lg font-black ${
+                          item.feasibility_score < 0.6 ? 'text-rose-800' : 'text-emerald-800'
+                        }`}>
                           {(item.feasibility_score * 100).toFixed(1)}% ({item.feasibility_score})
                         </div>
                       </div>
@@ -484,16 +529,32 @@ export const InventoryStagingPage: React.FC = () => {
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6" />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                  lastTestedResult.feasibility_score < 0.6
+                    ? 'bg-rose-100 text-rose-700'
+                    : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {lastTestedResult.feasibility_score < 0.6 ? (
+                    <AlertTriangle className="w-6 h-6" />
+                  ) : (
+                    <CheckCircle2 className="w-6 h-6" />
+                  )}
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">
                     Food Test Successfully Completed!
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Transferred to inventory with complete sensor and AI records.
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                    <p className="text-xs text-slate-500">
+                      Transferred to inventory with complete sensor and AI records.
+                    </p>
+                    {lastTestedResult.feasibility_score < 0.6 && (
+                      <Badge variant="rose" size="sm">
+                        <AlertTriangle className="w-3 h-3 mr-1 text-rose-600" />
+                        Human Review Required
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
               <button
@@ -503,6 +564,19 @@ export const InventoryStagingPage: React.FC = () => {
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Red Alert Banner in Popup if Feasibility Score < 60% */}
+            {lastTestedResult.feasibility_score < 0.6 && (
+              <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl flex items-center justify-between text-rose-900 text-xs shadow-xs animate-in fade-in">
+                <div className="flex items-center gap-2 font-bold">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>Human Review Required (Feasibility Score &lt; 60%)</span>
+                </div>
+                <span className="text-[11px] font-bold bg-rose-200/80 text-rose-900 px-2 py-0.5 rounded border border-rose-300">
+                  {(lastTestedResult.feasibility_score * 100).toFixed(1)}%
+                </span>
+              </div>
+            )}
 
             <div className="bg-slate-50 rounded-xl p-4 space-y-2 border border-slate-100">
               <div className="text-xs font-semibold text-slate-800">
@@ -543,12 +617,33 @@ export const InventoryStagingPage: React.FC = () => {
 
             {/* Feasibility & AI Highlights */}
             <div className="space-y-2 pt-1">
-              <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 flex items-center justify-between">
+              <div className={`p-3 rounded-lg border flex items-center justify-between ${
+                lastTestedResult.feasibility_score < 0.6
+                  ? 'bg-rose-50/80 border-rose-300'
+                  : 'bg-emerald-50 border-emerald-200'
+              }`}>
                 <div>
-                  <span className="text-xs font-semibold text-emerald-900 block">Feasibility Score (S)</span>
-                  <span className="text-[11px] text-emerald-700">0.45*ST + 0.20*SH + 0.20*SM + 0.15*SF</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-semibold block ${
+                      lastTestedResult.feasibility_score < 0.6 ? 'text-rose-950 font-bold' : 'text-emerald-900'
+                    }`}>
+                      Feasibility Score (S)
+                    </span>
+                    {lastTestedResult.feasibility_score < 0.6 && (
+                      <span className="text-[10px] bg-rose-600 text-white font-extrabold px-1.5 py-0.5 rounded uppercase">
+                        Review Needed
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-[11px] ${
+                    lastTestedResult.feasibility_score < 0.6 ? 'text-rose-700' : 'text-emerald-700'
+                  }`}>
+                    0.45*ST + 0.20*SH + 0.20*SM + 0.15*SF
+                  </span>
                 </div>
-                <div className="text-xl font-black text-emerald-800">
+                <div className={`text-xl font-black ${
+                  lastTestedResult.feasibility_score < 0.6 ? 'text-rose-700' : 'text-emerald-800'
+                }`}>
                   {(lastTestedResult.feasibility_score * 100).toFixed(1)}%
                 </div>
               </div>
