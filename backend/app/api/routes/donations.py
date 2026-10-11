@@ -1,9 +1,12 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
+import logging
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pymongo import DESCENDING
 from pymongo.database import Database
+
+logger = logging.getLogger("app.api.donations")
 
 from app.api.deps import get_current_user, get_db, require_role
 from app.core.config import settings
@@ -41,23 +44,37 @@ def calculate_safety_deadline(prep_time: datetime, category: FoodCategory) -> da
 
 
 def serialize_donation_doc(doc: dict, db: Optional[Database] = None) -> IncomingDonationResponse:
-    provider_id = str(doc.get("providerId") or doc.get("provider_id") or "")
-    hub_id = str(doc.get("hubId") or doc.get("hub_id") or "")
+    provider_id = str(doc.get("providerId") or doc.get("provider_id") or "") or None
+    hub_id = str(doc.get("hubId") or doc.get("hub_id") or "") or None
 
-    provider_name = None
-    provider_address = None
+    provider_name = doc.get("providerName") or doc.get("provider_name")
+    provider_type = doc.get("providerType") or doc.get("provider_type")
+    pickup_address = doc.get("pickupAddress") or doc.get("pickup_address") or doc.get("address")
     provider_coords = None
+    loc = doc.get("pickupLocation") or doc.get("pickup_location")
+    if loc and isinstance(loc, dict) and loc.get("type") == "Point":
+        provider_coords = loc.get("coordinates")
+    elif doc.get("provider_coordinates"):
+        provider_coords = doc.get("provider_coordinates")
+    elif doc.get("longitude") is not None and doc.get("latitude") is not None:
+        provider_coords = [float(doc["longitude"]), float(doc["latitude"])]
 
-    if db is not None and provider_id:
+    # Fallback to users collection if legacy document
+    if (not provider_name or not provider_coords) and db is not None and provider_id:
         try:
             p_query = {"_id": ObjectId(provider_id)} if ObjectId.is_valid(provider_id) else {"_id": provider_id}
             p_doc = db.users.find_one(p_query)
             if p_doc:
-                provider_name = p_doc.get("organization_name")
-                provider_address = p_doc.get("address")
-                loc = p_doc.get("location")
-                if loc and isinstance(loc, dict) and loc.get("type") == "Point":
-                    provider_coords = loc.get("coordinates")
+                if not provider_name:
+                    provider_name = p_doc.get("organization_name")
+                if not provider_type:
+                    provider_type = p_doc.get("provider_type")
+                if not pickup_address:
+                    pickup_address = p_doc.get("address")
+                if not provider_coords:
+                    u_loc = p_doc.get("location")
+                    if u_loc and isinstance(u_loc, dict) and u_loc.get("type") == "Point":
+                        provider_coords = u_loc.get("coordinates")
         except Exception:
             pass
 
@@ -65,8 +82,10 @@ def serialize_donation_doc(doc: dict, db: Optional[Database] = None) -> Incoming
         id=str(doc["_id"]),
         provider_id=provider_id,
         hub_id=hub_id,
-        provider_name=provider_name,
-        provider_address=provider_address,
+        provider_name=provider_name or "Food Provider",
+        provider_type=provider_type or "restaurant",
+        provider_address=pickup_address,
+        pickup_address=pickup_address,
         provider_coordinates=provider_coords,
         food_name=doc.get("foodName") or doc.get("food_name", ""),
         description=doc.get("description"),
@@ -90,52 +109,77 @@ def serialize_donation_doc(doc: dict, db: Optional[Database] = None) -> Incoming
     "",
     response_model=IncomingDonationResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Submit surplus food donation (Food Provider)",
+    summary="Submit surplus food donation (Food Provider - Open Access)",
 )
 def create_donation(
     payload: IncomingDonationCreate,
-    current_user: UserResponse = Depends(require_role(UserRole.PROVIDER)),
     db: Database = Depends(get_db),
 ):
     """
-    Food provider submits a surplus donation.
-    Sets status to READY_FOR_PICKUP and links to assigned central hub.
+    Food provider submits a surplus donation directly without account signup or login.
+    1. Geocodes pickup address to coordinates dynamically.
+    2. Identifies nearest eligible Central Hub.
+    3. Saves donation directly in incoming_donations (NO user record created in users collection).
+    4. Automatically triggers pickup planning if cumulative portions exceed 20.
     """
     now = datetime.now(timezone.utc)
 
-    # Identify provider's assigned hub
-    hub_id = current_user.nearest_hub_id
-    if not hub_id:
-        # Attempt to find nearest hub if coordinates exist
-        if current_user.latitude is not None and current_user.longitude is not None:
-            nearest_hub = GeocodingService.find_nearest_eligible_hub(
-                db, current_user.latitude, current_user.longitude
-            )
-            if nearest_hub:
-                hub_id = str(nearest_hub["_id"])
-                # Save to user profile for future submissions
-                p_query = {"_id": ObjectId(current_user.id)} if ObjectId.is_valid(current_user.id) else {"_id": current_user.id}
-                db.users.update_one(p_query, {"$set": {"nearest_hub_id": hub_id}})
+    # 1. Geocode pickup address dynamically
+    address_str = payload.pickup_address.strip() if payload.pickup_address else "Gandhipuram, Coimbatore"
+    geocoded = GeocodingService.geocode_address(address_str)
+    if geocoded:
+        lat, lon = geocoded
+    else:
+        logger.warning("Geocoding unresolvable for '%s', using regional Coimbatore reference coordinates", address_str)
+        lat, lon = 11.0168, 76.9558
 
-    if not hub_id:
+    # 2. Identify nearest central hub based on dynamically geocoded coordinates
+    nearest_hub = GeocodingService.find_nearest_eligible_hub(db, float(lat), float(lon))
+    if not nearest_hub:
+        nearest_hub = db.users.find_one({"role": "hub", "is_active": True})
+
+    if not nearest_hub:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No central hub with configured coordinates is currently available for your location. Please contact support or await hub setup.",
+            detail="No central hub with configured coordinates is currently available. Please contact support or await hub setup.",
         )
 
-    # Food safety deadline
+    hub_id = str(nearest_hub["_id"])
+
+    # 3. Food safety deadline
     safety_deadline = calculate_safety_deadline(payload.preparation_date_time, payload.food_category)
 
+    # 4. Construct incoming donation doc (saved directly in incoming_donations, NOT users)
     doc = {
-        "providerId": current_user.id,
+        "providerName": payload.provider_name.strip() if payload.provider_name else "Food Provider",
+        "provider_name": payload.provider_name.strip() if payload.provider_name else "Food Provider",
+        "providerType": payload.provider_type.strip() if payload.provider_type else "restaurant",
+        "provider_type": payload.provider_type.strip() if payload.provider_type else "restaurant",
+        "pickupAddress": address_str,
+        "pickup_address": address_str,
+        "pickupLocation": {
+            "type": "Point",
+            "coordinates": [float(lon), float(lat)],
+        },
+        "provider_coordinates": [float(lon), float(lat)],
+        "latitude": float(lat),
+        "longitude": float(lon),
         "hubId": hub_id,
+        "hub_id": hub_id,
+        "providerId": None,
         "foodName": payload.food_name.strip(),
+        "food_name": payload.food_name.strip(),
         "description": payload.description.strip() if payload.description else None,
         "foodCategory": payload.food_category.value,
+        "food_category": payload.food_category.value,
         "dietaryType": payload.dietary_type.value,
+        "dietary_type": payload.dietary_type.value,
         "preparationDateTime": payload.preparation_date_time,
+        "preparation_date_time": payload.preparation_date_time,
         "peopleServed": payload.people_served,
+        "people_served": payload.people_served,
         "storageRequirements": payload.storage_requirements.value,
+        "storage_requirements": payload.storage_requirements.value,
         "pickupNotes": payload.pickup_notes.strip() if payload.pickup_notes else None,
         "status": DonationStatus.READY_FOR_PICKUP.value,
         "pickupRunId": None,
@@ -149,9 +193,7 @@ def create_donation(
     res = db.incoming_donations.insert_one(doc)
     doc["_id"] = res.inserted_id
 
-    # Automatic Dispatch Pipeline Trigger:
-    # If cumulative unreserved pending food portions for this hub exceed 20,
-    # immediately trigger automated pickup route optimization and vehicle assignment.
+    # 5. Automatic Dispatch Trigger: If total people served > 20
     try:
         hub_id_candidates = [str(hub_id)]
         if ObjectId.is_valid(hub_id):
@@ -166,8 +208,8 @@ def create_donation(
         if total_people > 20:
             from app.api.routes.trips import execute_pickup_planning
             execute_pickup_planning(db=db, hub_id=str(hub_id), force=False)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Auto-dispatch check notice: %s", exc)
 
     return serialize_donation_doc(doc, db=db)
 
@@ -182,7 +224,7 @@ def list_donations(
     db: Database = Depends(get_db),
 ):
     if current_user.role == UserRole.PROVIDER:
-        return get_provider_donations(current_user=current_user, db=db)
+        return get_provider_donations(db=db)
     elif current_user.role == UserRole.HUB:
         return get_hub_donations(status_filter=None, current_user=current_user, db=db)
     return []
@@ -191,25 +233,26 @@ def list_donations(
 @router.get(
     "/provider",
     response_model=List[IncomingDonationResponse],
-    summary="Get all donations created by the authenticated provider",
+    summary="Get all recent donations for provider portal",
 )
 def get_provider_donations(
-    current_user: UserResponse = Depends(require_role(UserRole.PROVIDER)),
+    provider_name: Optional[str] = Query(None, description="Filter by restaurant/bakery name"),
     db: Database = Depends(get_db),
 ):
+    query = {}
+    if provider_name:
+        query = {"$or": [{"providerName": provider_name}, {"provider_name": provider_name}]}
     incoming_docs = list(
-        db.incoming_donations.find({"providerId": current_user.id}).sort("createdAt", DESCENDING)
+        db.incoming_donations.find(query).sort("createdAt", DESCENDING).limit(30)
     )
     inv_docs = list(
-        db.inventory.find({"provider_id": current_user.id}).sort("created_at", DESCENDING)
+        db.inventory.find(query).sort("created_at", DESCENDING).limit(30)
     )
-    # Combine and sort by creation timestamp
     combined = [serialize_donation_doc(d, db=db) for d in incoming_docs]
     for inv in inv_docs:
-        # Convert inventory doc format to IncomingDonationResponse
         combined.append(serialize_donation_doc(inv, db=db))
     combined.sort(key=lambda x: x.created_at, reverse=True)
-    return combined
+    return combined[:30]
 
 
 def get_hub_id_query(hub_id: str):

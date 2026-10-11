@@ -162,26 +162,45 @@ def execute_pickup_planning(db: Database, hub_id: str, force: bool = False) -> d
         )
 
     try:
-        # 6. Group donations by provider so each restaurant is a single stop
+        # 6. Group donations by establishment/pickup location directly from incoming_donations collection
         provider_donations_map: Dict[str, List[dict]] = {}
         for d in eligible_donations:
-            pid = str(d.get("providerId"))
-            provider_donations_map.setdefault(pid, []).append(d)
+            p_key = str(d.get("pickupAddress") or d.get("pickup_address") or d.get("providerName") or d.get("provider_name") or d.get("providerId") or d["_id"])
+            provider_donations_map.setdefault(p_key, []).append(d)
 
         stops_input = []
-        for pid, d_list in provider_donations_map.items():
-            p_doc = db.users.find_one({"_id": ObjectId(pid)} if ObjectId.is_valid(pid) else {"_id": pid})
-            if not p_doc:
-                raise ValueError(f"Provider {pid} not found in database.")
-            p_loc = p_doc.get("location")
-            if not p_loc or not isinstance(p_loc, dict) or p_loc.get("type") != "Point":
-                raise ValueError(f"Provider '{p_doc.get('organization_name')}' does not have valid coordinates.")
-            p_coords = p_loc.get("coordinates")  # [lon, lat]
+        for p_key, d_list in provider_donations_map.items():
+            first_d = d_list[0]
+            # Directly fetch coordinates from donation document
+            coords = None
+            loc = first_d.get("pickupLocation") or first_d.get("pickup_location")
+            if loc and isinstance(loc, dict) and loc.get("type") == "Point":
+                coords = loc.get("coordinates")
+            elif first_d.get("provider_coordinates"):
+                coords = first_d.get("provider_coordinates")
+            elif first_d.get("longitude") is not None and first_d.get("latitude") is not None:
+                coords = [float(first_d["longitude"]), float(first_d["latitude"])]
+
+            # Legacy fallback if coords not in donation
+            if not coords and first_d.get("providerId"):
+                pid = str(first_d["providerId"])
+                p_doc = db.users.find_one({"_id": ObjectId(pid)} if ObjectId.is_valid(pid) else {"_id": pid})
+                if p_doc and p_doc.get("location"):
+                    coords = p_doc["location"].get("coordinates")
+
+            if not coords or len(coords) < 2:
+                # Fallback to regional coordinates
+                coords = [76.9558, 11.0168]
+
+            prov_name = first_d.get("providerName") or first_d.get("provider_name") or "Food Provider"
+            prov_addr = first_d.get("pickupAddress") or first_d.get("pickup_address") or "Coimbatore"
+            prov_id = str(first_d.get("providerId") or first_d.get("provider_id") or first_d["_id"])
+
             stops_input.append({
-                "provider_id": pid,
-                "provider_name": p_doc.get("organization_name", "Provider"),
-                "address": p_doc.get("address", ""),
-                "coordinates": [float(p_coords[0]), float(p_coords[1])],
+                "provider_id": prov_id,
+                "provider_name": prov_name,
+                "address": prov_addr,
+                "coordinates": [float(coords[0]), float(coords[1])],
                 "donation_ids": [str(d["_id"]) for d in d_list],
                 "people_served": sum(int(d.get("peopleServed", 0)) for d in d_list),
             })

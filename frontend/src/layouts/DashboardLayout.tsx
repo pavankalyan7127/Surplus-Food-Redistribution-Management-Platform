@@ -30,11 +30,9 @@ export const DashboardLayout: React.FC = () => {
           title: 'Food Provider Portal',
           badgeVariant: 'emerald' as const,
           label: 'Food Provider',
-          homePath: '/provider/dashboard',
+          homePath: '/provider/surplus-donations',
           navItems: [
-            { label: 'Overview', path: '/provider/dashboard', icon: LayoutDashboard },
             { label: 'Surplus Donations', path: '/provider/surplus-donations', icon: Sparkles, badge: 'Trip 1' },
-            { label: 'Collection Trips', path: '#trips', icon: Truck, badge: 'Phase 2' },
           ],
         };
       case 'hub':
@@ -63,6 +61,17 @@ export const DashboardLayout: React.FC = () => {
           ],
         };
       default:
+        if (location.pathname.startsWith('/provider')) {
+          return {
+            title: 'Food Provider Portal',
+            badgeVariant: 'emerald' as const,
+            label: 'Food Provider (Open Access)',
+            homePath: '/provider/surplus-donations',
+            navItems: [
+              { label: 'Surplus Donations', path: '/provider/surplus-donations', icon: Sparkles, badge: 'Trip 1' },
+            ],
+          };
+        }
         return {
           title: 'Surplus Food Platform',
           badgeVariant: 'slate' as const,
@@ -100,26 +109,37 @@ export const DashboardLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center space-x-2 text-right">
-              <div>
-                <p className="text-sm font-semibold text-slate-800 leading-none">
-                  {user?.organization_name || user?.contact_name}
-                </p>
-                <p className="text-xs text-slate-500 mt-1">{user?.email}</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600">
-                <UserCheck className="w-4 h-4" />
-              </div>
-            </div>
+            {user ? (
+              <>
+                <div className="hidden md:flex items-center space-x-2 text-right">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 leading-none">
+                      {user.organization_name || user.contact_name}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">{user.email}</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600">
+                    <UserCheck className="w-4 h-4" />
+                  </div>
+                </div>
 
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-slate-200"
-              title="Sign Out"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Sign Out</span>
-            </button>
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-slate-200"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/"
+                className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-colors border border-slate-200"
+              >
+                <span>&larr; Platform Home</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -165,7 +185,7 @@ export const DashboardLayout: React.FC = () => {
             <div className="pt-3 mt-3 border-t border-slate-100 px-3">
               <div className="text-xs text-slate-500 flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                <span className="truncate">{user?.organization_name}</span>
+                <span className="truncate">{user?.organization_name || 'Food Provider Portal'}</span>
               </div>
             </div>
           </div>

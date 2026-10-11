@@ -16,10 +16,12 @@ class FeasibilityBreakdown(BaseModel):
 class InventoryResponse(BaseModel):
     id: str
     original_donation_id: str
-    provider_id: str
+    provider_id: Optional[str] = None
     hub_id: str
     provider_name: Optional[str] = None
+    provider_type: Optional[str] = None
     provider_address: Optional[str] = None
+    pickup_address: Optional[str] = None
     provider_coordinates: Optional[list] = None
 
     # Original donation metadata

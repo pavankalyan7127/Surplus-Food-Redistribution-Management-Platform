@@ -63,18 +63,15 @@ export const LandingPage: React.FC = () => {
             </p>
             <div className="mt-6 flex flex-col gap-2">
               <Link
-                to="/login/provider"
+                to="/provider/surplus-donations"
                 className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-emerald-600 text-white font-medium text-sm hover:bg-emerald-700 transition-colors shadow-sm group-hover:shadow"
               >
-                <span>Provider Login</span>
+                <span>Donate Surplus Food</span>
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link
-                to="/signup/provider"
-                className="text-center text-xs text-emerald-700 hover:text-emerald-800 hover:underline py-1 font-medium"
-              >
-                Register New Provider
-              </Link>
+              <span className="text-center text-xs text-slate-500 py-1 font-medium">
+                No login required &bull; Direct submission
+              </span>
             </div>
           </Card>
 

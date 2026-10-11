@@ -43,6 +43,9 @@ class StorageRequirement(str, Enum):
 
 
 class IncomingDonationCreate(BaseModel):
+    provider_name: str = Field(default="Food Provider", min_length=2, max_length=150, description="Restaurant / Bakery / Food Establishment Name")
+    provider_type: str = Field(default="restaurant", description="restaurant, bakery, or mess")
+    pickup_address: str = Field(default="Gandhipuram, Coimbatore, Tamil Nadu", min_length=3, max_length=300, description="Physical pickup address")
     food_name: str = Field(..., min_length=2, max_length=150)
     food_category: FoodCategory = FoodCategory.COOKED_MEALS
     dietary_type: DietaryType = DietaryType.VEGETARIAN
@@ -55,10 +58,12 @@ class IncomingDonationCreate(BaseModel):
 
 class IncomingDonationResponse(BaseModel):
     id: str
-    provider_id: str
+    provider_id: Optional[str] = None
     hub_id: Optional[str] = None
     provider_name: Optional[str] = None
+    provider_type: Optional[str] = None
     provider_address: Optional[str] = None
+    pickup_address: Optional[str] = None
     provider_coordinates: Optional[list] = None
     food_name: str
     description: Optional[str] = None

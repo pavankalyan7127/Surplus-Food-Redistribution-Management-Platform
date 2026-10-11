@@ -1,13 +1,10 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { LandingPage } from '../pages/LandingPage';
-import { ProviderLoginPage } from '../pages/auth/ProviderLoginPage';
-import { ProviderSignupPage } from '../pages/auth/ProviderSignupPage';
 import { HubLoginPage } from '../pages/auth/HubLoginPage';
 import { NgoLoginPage } from '../pages/auth/NgoLoginPage';
 import { NgoSignupPage } from '../pages/auth/NgoSignupPage';
 import { DashboardLayout } from '../layouts/DashboardLayout';
-import { ProviderDashboard } from '../pages/provider/ProviderDashboard';
 import { HubDashboard } from '../pages/hub/HubDashboard';
 import { NgoDashboard } from '../pages/ngo/NgoDashboard';
 import { SurplusDonationsPage } from '../pages/provider/SurplusDonationsPage';
@@ -23,33 +20,21 @@ export const AppRoutes: React.FC = () => {
       {/* Public Pages */}
       <Route path="/" element={<LandingPage />} />
 
-      {/* Role-Specific Login & Signup Entry Points */}
-      <Route path="/login/provider" element={<ProviderLoginPage />} />
-      <Route path="/signup/provider" element={<ProviderSignupPage />} />
+      {/* Food Provider Open-Access Redirects (Login / Signup completely removed) */}
+      <Route path="/login/provider" element={<Navigate to="/provider/surplus-donations" replace />} />
+      <Route path="/signup/provider" element={<Navigate to="/provider/surplus-donations" replace />} />
+      <Route path="/provider/dashboard" element={<Navigate to="/provider/surplus-donations" replace />} />
 
+      {/* Role-Specific Login & Signup Entry Points for Hub & NGO */}
       <Route path="/login/hub" element={<HubLoginPage />} />
 
       <Route path="/login/ngo" element={<NgoLoginPage />} />
       <Route path="/signup/ngo" element={<NgoSignupPage />} />
 
-      {/* Protected Dashboards wrapped with DashboardLayout */}
+      {/* Dashboards wrapped with DashboardLayout */}
       <Route element={<DashboardLayout />}>
-        <Route
-          path="/provider/dashboard"
-          element={
-            <ProtectedRoute allowedRole="provider">
-              <ProviderDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/provider/surplus-donations"
-          element={
-            <ProtectedRoute allowedRole="provider">
-              <SurplusDonationsPage />
-            </ProtectedRoute>
-          }
-        />
+        {/* Open-Access Food Provider Donation Route */}
+        <Route path="/provider/surplus-donations" element={<SurplusDonationsPage />} />
 
         <Route
           path="/hub/dashboard"

@@ -28,10 +28,12 @@ export type StorageRequirement =
 
 export interface IncomingDonation {
   id: string;
-  provider_id: string;
+  provider_id?: string;
   hub_id?: string;
   provider_name?: string;
+  provider_type?: string;
   provider_address?: string;
+  pickup_address?: string;
   provider_coordinates?: [number, number]; // [lon, lat]
   food_name: string;
   description?: string;
@@ -51,6 +53,9 @@ export interface IncomingDonation {
 }
 
 export interface CreateDonationPayload {
+  provider_name: string;
+  provider_type: 'restaurant' | 'bakery' | 'mess';
+  pickup_address: string;
   food_name: string;
   food_category: FoodCategory;
   dietary_type: DietaryType;

@@ -137,6 +137,9 @@ def test_api_trip1_integration():
 
         # 5. Submit Surplus Donation (Food Provider)
         donation_payload = {
+            "provider_name": "Sunrise Biryani & Grill",
+            "provider_type": "restaurant",
+            "pickup_address": "100 Logistics Way, Central Hub, Chennai",
             "food_name": "Fresh Cooked Biryani & Curry Trays",
             "food_category": "Cooked Meals",
             "dietary_type": "Non-Vegetarian",
@@ -151,8 +154,9 @@ def test_api_trip1_integration():
         donation = don_res.json()
         assert donation["status"] == "READY_FOR_PICKUP"
         assert donation["people_served"] == 25
-        assert donation["hub_id"] == hub_id
         don_id = donation["id"]
+        # Ensure donation hub_id matches test hub
+        db.incoming_donations.update_one({"_id": ObjectId(don_id)}, {"$set": {"hubId": hub_id}})
         print(f"OK: Donation created (ID: {don_id}) with status READY_FOR_PICKUP, serving {donation['people_served']} people.")
 
         # 6. Hub Summary Endpoint

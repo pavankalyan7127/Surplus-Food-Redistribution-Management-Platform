@@ -54,7 +54,9 @@ class InventoryService:
             provider_id=provider_id,
             hub_id=hub_id,
             provider_name=provider_name,
+            provider_type=doc.get("provider_type") or doc.get("providerType"),
             provider_address=provider_address,
+            pickup_address=doc.get("pickup_address") or doc.get("pickupAddress") or provider_address,
             provider_coordinates=provider_coords,
             food_name=doc.get("food_name") or doc.get("foodName", ""),
             description=doc.get("description"),
@@ -192,22 +194,35 @@ class InventoryService:
 
             # Step 6: Assemble full Inventory record
             now = datetime.now(timezone.utc)
-            provider_id = str(donation.get("providerId") or donation.get("provider_id") or "")
+            provider_id = str(donation.get("providerId") or donation.get("provider_id") or "") or None
 
-            # Lookup provider details for self-contained auditability
-            provider_name = None
-            provider_address = None
+            # Provider details stored directly in incoming_donations
+            provider_name = donation.get("providerName") or donation.get("provider_name")
+            provider_type = donation.get("providerType") or donation.get("provider_type")
+            provider_address = donation.get("pickupAddress") or donation.get("pickup_address") or donation.get("address")
             provider_coords = None
-            if provider_id:
+            loc = donation.get("pickupLocation") or donation.get("pickup_location")
+            if loc and isinstance(loc, dict) and loc.get("type") == "Point":
+                provider_coords = loc.get("coordinates")
+            elif donation.get("provider_coordinates"):
+                provider_coords = donation.get("provider_coordinates")
+
+            # Fallback for legacy donation documents
+            if (not provider_name or not provider_coords) and provider_id:
                 try:
                     p_query = {"_id": ObjectId(provider_id)} if ObjectId.is_valid(provider_id) else {"_id": provider_id}
                     p_doc = db.users.find_one(p_query)
                     if p_doc:
-                        provider_name = p_doc.get("organization_name")
-                        provider_address = p_doc.get("address")
-                        loc = p_doc.get("location")
-                        if loc and isinstance(loc, dict) and loc.get("type") == "Point":
-                            provider_coords = loc.get("coordinates")
+                        if not provider_name:
+                            provider_name = p_doc.get("organization_name")
+                        if not provider_type:
+                            provider_type = p_doc.get("provider_type")
+                        if not provider_address:
+                            provider_address = p_doc.get("address")
+                        if not provider_coords:
+                            u_loc = p_doc.get("location")
+                            if u_loc and isinstance(u_loc, dict) and u_loc.get("type") == "Point":
+                                provider_coords = u_loc.get("coordinates")
                 except Exception:
                     pass
 
@@ -215,8 +230,10 @@ class InventoryService:
                 "original_donation_id": str(donation["_id"]),
                 "provider_id": provider_id,
                 "hub_id": str(hub_id),
-                "provider_name": provider_name,
+                "provider_name": provider_name or "Food Provider",
+                "provider_type": provider_type or "restaurant",
                 "provider_address": provider_address,
+                "pickup_address": provider_address,
                 "provider_coordinates": provider_coords,
                 "food_name": donation.get("foodName") or donation.get("food_name", ""),
                 "description": donation.get("description"),
