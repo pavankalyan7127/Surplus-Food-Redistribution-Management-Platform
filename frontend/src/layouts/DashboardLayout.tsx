@@ -9,6 +9,7 @@ import {
   Truck,
   HeartHandshake,
   UserCheck,
+  History,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Badge } from '../components/common/Badge';
@@ -45,6 +46,8 @@ export const DashboardLayout: React.FC = () => {
             { label: 'Overview', path: '/hub/dashboard', icon: LayoutDashboard },
             { label: 'Incoming Collections', path: '/hub/incoming-collections', icon: Truck, badge: 'Trip 1' },
             { label: 'Inventory', path: '/hub/inventory-staging', icon: Layers },
+            { label: 'View NGO Orders', path: '/hub/ngo-orders', icon: HeartHandshake, badge: 'Trip 2' },
+            { label: 'Delivery History', path: '/hub/history', icon: History },
           ],
         };
       case 'ngo':
@@ -55,9 +58,9 @@ export const DashboardLayout: React.FC = () => {
           homePath: '/ngo/dashboard',
           navItems: [
             { label: 'Overview', path: '/ngo/dashboard', icon: LayoutDashboard },
-            { label: 'Hub Inventory', path: '#hub-inventory', icon: Layers, badge: 'Browse' },
-            { label: 'Food Requests', path: '#requests', icon: HeartHandshake, badge: 'Phase 2' },
-            { label: 'Dispatch Tracking', path: '#dispatch', icon: Truck, badge: 'Trip 2' },
+            { label: 'Food Requests', path: '/ngo/food-requests', icon: HeartHandshake, badge: 'Trip 2' },
+            { label: 'Dispatch Tracking', path: '/ngo/dispatch-tracking', icon: Truck, badge: 'Live' },
+            { label: 'Order History', path: '/ngo/history', icon: History },
           ],
         };
       default:

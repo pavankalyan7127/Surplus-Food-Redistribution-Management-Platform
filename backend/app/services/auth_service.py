@@ -136,6 +136,22 @@ class AuthService:
                 detail="An account with this email already exists",
             )
 
+        lat = payload.latitude
+        lon = payload.longitude
+        if lat is None or lon is None:
+            geocoded = GeocodingService.geocode_address(payload.address)
+            if geocoded:
+                lat, lon = geocoded
+            else:
+                lat, lon = 11.0168, 76.9558
+
+        location_doc = None
+        if lat is not None and lon is not None:
+            location_doc = {
+                "type": "Point",
+                "coordinates": [float(lon), float(lat)],
+            }
+
         now = datetime.now(timezone.utc)
         user_doc = {
             "organization_name": payload.organization_name.strip(),
@@ -148,6 +164,9 @@ class AuthService:
             "is_active": True,
             "provider_type": None,
             "estimated_daily_meal_demand": payload.estimated_daily_meal_demand,
+            "location": location_doc,
+            "latitude": float(lat) if lat is not None else None,
+            "longitude": float(lon) if lon is not None else None,
             "created_at": now,
             "updated_at": now,
         }

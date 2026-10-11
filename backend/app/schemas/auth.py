@@ -42,6 +42,8 @@ class NgoSignupRequest(BaseModel):
     phone: str = Field(..., min_length=7, max_length=25)
     address: str = Field(..., min_length=5, max_length=255)
     estimated_daily_meal_demand: Optional[int] = Field(None, ge=1, le=100000)
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
 
 
 class LoginRequest(BaseModel):

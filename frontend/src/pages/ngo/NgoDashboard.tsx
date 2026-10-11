@@ -6,14 +6,12 @@ import {
   Phone,
   Mail,
   UtensilsCrossed,
-  PackageSearch,
-  Clock,
   ClipboardList,
+  History,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
-import { Button } from '../../components/common/Button';
 
 export const NgoDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -89,92 +87,83 @@ export const NgoDashboard: React.FC = () => {
 
       {/* Feature Modules Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Placeholder Card 1: Available Hub Inventory */}
+        {/* Card 1: Food Allocation Requests */}
         <Card
-          title="Hub Inventory"
-          subtitle="Surplus ready for allocation"
-          action={<Badge variant="purple">Phase 2</Badge>}
+          title="Food Requests"
+          subtitle="Request surplus rations from nearest Central Hubs"
+          action={<Badge variant="purple">Trip Type 2</Badge>}
         >
           <div className="py-6 px-2 text-center">
             <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3 border border-purple-100">
-              <PackageSearch className="w-6 h-6" />
-            </div>
-            <h4 className="text-sm font-semibold text-slate-900">
-              Browse Hub Inventory
-            </h4>
-            <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
-              Real-time catalog of packaged foods, produce, and grains staged at regional collection hubs.
-            </p>
-            <div className="mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                className="opacity-70 cursor-not-allowed w-full"
-              >
-                Browse Catalog (Phase 2)
-              </Button>
-            </div>
-            <div className="mt-3 text-[11px] text-slate-400">
-              Assigned to Team Member 2
-            </div>
-          </div>
-        </Card>
-
-        {/* Placeholder Card 2: Food Allocation Requests */}
-        <Card
-          title="Food Requests"
-          subtitle="Requisitions & quotas"
-          action={<Badge variant="slate">Empty State</Badge>}
-        >
-          <div className="py-6 px-2 text-center">
-            <div className="w-12 h-12 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center mx-auto mb-3 border border-slate-200">
               <ClipboardList className="w-6 h-6" />
             </div>
-            <h4 className="text-sm font-semibold text-slate-900">
-              No Active Requisitions
+            <h4 className="text-base font-semibold text-slate-900">
+              Request Food Rations
             </h4>
-            <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
-              Submit requests according to your community's meal distribution schedule and capacity.
+            <p className="mt-1.5 text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+              Linear hub finder with automated stock evaluation, indivisible packaging allocation, and Gemini AI shelf-life priority.
             </p>
-            <div className="mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                className="opacity-70 cursor-not-allowed w-full"
+            <div className="mt-5">
+              <a
+                href="/ngo/food-requests"
+                className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-colors shadow-sm w-full"
               >
-                Create Request (Phase 2)
-              </Button>
-            </div>
-            <div className="mt-3 text-[11px] text-slate-400">
-              Assigned to Team Member 2
+                Open Food Requests &rarr;
+              </a>
             </div>
           </div>
         </Card>
 
-        {/* Placeholder Card 3: Outbound Delivery Tracking */}
+        {/* Card 2: Outbound Delivery Tracking */}
         <Card
-          title="Trip Type 2 Delivery"
-          subtitle="Hub &rarr; NGO transit"
-          action={<Badge variant="slate">Trip 2</Badge>}
+          title="Dispatch Tracking"
+          subtitle="Hub &rarr; NGO live transit"
+          action={<Badge variant="emerald">Live Map</Badge>}
         >
           <div className="py-6 px-2 text-center">
-            <div className="w-12 h-12 bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center mx-auto mb-3 border border-slate-200">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-3 border border-emerald-100">
               <Truck className="w-6 h-6" />
             </div>
-            <h4 className="text-sm font-semibold text-slate-900">
-              No Deliveries Scheduled
+            <h4 className="text-base font-semibold text-slate-900">
+              Active Transit Tracking
             </h4>
-            <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
-              When a dispatch is triggered, the transport vehicle, driver contact, and ETA will track here.
+            <p className="mt-1.5 text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+              Real-time MapLibre road simulation from Central Hubs to your delivery facility along OSRM road geometry.
             </p>
-            <div className="mt-4 flex items-center justify-center gap-1 text-[11px] text-slate-400 py-1.5">
-              <Clock className="w-3.5 h-3.5" />
-              <span>Awaiting dispatch activation</span>
+            <div className="mt-5">
+              <a
+                href="/ngo/dispatch-tracking"
+                className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors w-full"
+              >
+                Track Outbound Dispatch &rarr;
+              </a>
             </div>
-            <div className="mt-3 text-[11px] text-slate-400">
-              Assigned to Team Member 2
+          </div>
+        </Card>
+
+        {/* Card 3: Order History */}
+        <Card
+          title="Order History"
+          subtitle="Fulfilled food deliveries"
+          action={<Badge variant="blue">History</Badge>}
+        >
+          <div className="py-6 px-2 text-center">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 border border-blue-100">
+              <History className="w-6 h-6" />
+            </div>
+            <h4 className="text-base font-semibold text-slate-900">
+              Delivery Audit Trail
+            </h4>
+            <p className="mt-1.5 text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+              Comprehensive log of all received surplus food rations from various Central Hubs, portion counts, and package breakdowns.
+            </p>
+            <div className="mt-5">
+              <a
+                href="/ngo/history"
+                className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors w-full border border-blue-200"
+              >
+                View Order History &rarr;
+              </a>
             </div>
           </div>
         </Card>

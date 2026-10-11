@@ -147,20 +147,33 @@ export const HubDashboard: React.FC = () => {
         <Card
           title="Outbound Distribution"
           subtitle="Trip Type 2: Hub &rarr; NGO"
-          action={<Badge variant="purple">Team Member 2</Badge>}
+          action={<Badge variant="purple">Trip Type 2 Active</Badge>}
         >
           <div className="py-6 px-4 text-center">
             <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3 border border-purple-100">
               <Truck className="w-6 h-6" />
             </div>
             <h4 className="text-sm font-semibold text-slate-900">
-              No Outbound Dispatches Scheduled
+              NGO Order Allocation & Dispatch
             </h4>
             <p className="mt-1.5 text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-              Approved NGO food requests will be scheduled for vehicle dispatch and real-time delivery confirmation.
+              Process incoming NGO requests, review indivisible package allocations by Gemini shelf-life, and run live road transit simulations.
             </p>
-            <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400">
-              Assigned to Team Member 2 &bull; NGO request dispatch
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2">
+              <Link to="/hub/ngo-orders">
+                <Button variant="primary" size="sm" className="bg-purple-600 hover:bg-purple-700 text-white font-semibold">
+                  View NGO Orders
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
+              </Link>
+              <Link to="/hub/history">
+                <Button variant="outline" size="sm">
+                  History Log
+                </Button>
+              </Link>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-purple-700 font-medium">
+              Trip Type 2 &bull; Indivisible Stock Matching &bull; Persistent Map
             </div>
           </div>
         </Card>

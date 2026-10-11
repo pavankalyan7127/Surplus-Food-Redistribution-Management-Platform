@@ -10,6 +10,11 @@ import { NgoDashboard } from '../pages/ngo/NgoDashboard';
 import { SurplusDonationsPage } from '../pages/provider/SurplusDonationsPage';
 import { IncomingCollectionsPage } from '../pages/hub/IncomingCollectionsPage';
 import { InventoryStagingPage } from '../pages/hub/InventoryStagingPage';
+import { ViewNgoOrdersPage } from '../pages/hub/ViewNgoOrdersPage';
+import { DeliveryHistoryPage } from '../pages/hub/DeliveryHistoryPage';
+import { FoodRequestsPage } from '../pages/ngo/FoodRequestsPage';
+import { DispatchTrackingPage } from '../pages/ngo/DispatchTrackingPage';
+import { NgoHistoryPage } from '../pages/ngo/NgoHistoryPage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { UnauthorizedPage } from '../pages/Unauthorized';
 import { NotFoundPage } from '../pages/NotFound';
@@ -60,12 +65,52 @@ export const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/hub/ngo-orders"
+          element={
+            <ProtectedRoute allowedRole="hub">
+              <ViewNgoOrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/hub/history"
+          element={
+            <ProtectedRoute allowedRole="hub">
+              <DeliveryHistoryPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/ngo/dashboard"
           element={
             <ProtectedRoute allowedRole="ngo">
               <NgoDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ngo/food-requests"
+          element={
+            <ProtectedRoute allowedRole="ngo">
+              <FoodRequestsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ngo/dispatch-tracking"
+          element={
+            <ProtectedRoute allowedRole="ngo">
+              <DispatchTrackingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ngo/history"
+          element={
+            <ProtectedRoute allowedRole="ngo">
+              <NgoHistoryPage />
             </ProtectedRoute>
           }
         />

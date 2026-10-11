@@ -1,16 +1,19 @@
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
 from pymongo.database import Database
+from pymongo import DESCENDING
 
 from app.api.deps import get_db, require_role
 from app.models.user import UserRole
 from app.models.vehicle import VehicleResponse
+from app.models.ngo_order import NgoOrderResponse, DeliveryHistoryItem
 from app.schemas.auth import HubLocationUpdateRequest, UserResponse
 from app.services.auth_service import serialize_user_doc
 from app.services.geocoding_service import GeocodingService
 from app.services.vehicle_service import VehicleService
+from app.services.trip2_service import Trip2Service
 
 router = APIRouter(prefix="/hubs", tags=["Hubs"])
 
@@ -139,3 +142,127 @@ def seed_hub_vehicles(
             )
         )
     return results
+
+
+@router.get(
+    "/orders",
+    response_model=List[NgoOrderResponse],
+    summary="List only incoming/active NGO orders assigned to this Hub",
+)
+def list_hub_ngo_orders(
+    current_user: UserResponse = Depends(require_role(UserRole.HUB)),
+    db: Database = Depends(get_db),
+):
+    hub_candidates = Trip2Service.get_hub_candidates(current_user.id)
+    # Only return incoming and in-transit orders (delivered orders are moved to history)
+    docs = list(
+        db.ngo_orders.find({
+            "hub_id": {"$in": hub_candidates},
+            "status": {"$in": ["CONFIRMED", "IN_TRANSIT"]},
+        }).sort("created_at", DESCENDING)
+    )
+    return [Trip2Service.serialize_order_doc(d) for d in docs]
+
+
+@router.get(
+    "/orders/active",
+    response_model=Optional[NgoOrderResponse],
+    summary="Get active incoming NGO dispatch order for this Hub",
+)
+def get_active_hub_ngo_order(
+    current_user: UserResponse = Depends(require_role(UserRole.HUB)),
+    db: Database = Depends(get_db),
+):
+    hub_candidates = Trip2Service.get_hub_candidates(current_user.id)
+    doc = db.ngo_orders.find_one(
+        {"hub_id": {"$in": hub_candidates}, "status": {"$in": ["CONFIRMED", "IN_TRANSIT"]}},
+        sort=[("created_at", DESCENDING)],
+    )
+    if not doc:
+        return None
+    return Trip2Service.serialize_order_doc(doc)
+
+
+@router.post(
+    "/orders/{order_id}/start",
+    response_model=NgoOrderResponse,
+    summary="Start delivery transit simulation from Hub to NGO",
+)
+def start_hub_ngo_delivery(
+    order_id: str,
+    current_user: UserResponse = Depends(require_role(UserRole.HUB)),
+    db: Database = Depends(get_db),
+):
+    query = {"_id": ObjectId(order_id)} if ObjectId.is_valid(order_id) else {"_id": order_id}
+    order = db.ngo_orders.find_one(query)
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found.")
+
+    db.ngo_orders.update_one(
+        query,
+        {
+            "$set": {
+                "status": "IN_TRANSIT",
+                "simulation_status": "IN_PROGRESS",
+                "dispatched_at": datetime.now(timezone.utc),
+            }
+        },
+    )
+    updated = db.ngo_orders.find_one(query)
+    return Trip2Service.serialize_order_doc(updated)
+
+
+@router.post(
+    "/orders/{order_id}/complete",
+    response_model=NgoOrderResponse,
+    summary="Mark NGO delivery completed, release vehicle, remove inventory, and archive to history",
+)
+def complete_hub_ngo_delivery(
+    order_id: str,
+    current_user: UserResponse = Depends(require_role(UserRole.HUB)),
+    db: Database = Depends(get_db),
+):
+    try:
+        final_doc = Trip2Service.complete_delivery_and_archive(db, order_id)
+        return Trip2Service.serialize_order_doc(final_doc)
+    except ValueError as val_err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+
+
+@router.get(
+    "/history",
+    response_model=List[DeliveryHistoryItem],
+    summary="List all past NGO deliveries dispatched by this Hub from history collection",
+)
+def get_hub_delivery_history(
+    current_user: UserResponse = Depends(require_role(UserRole.HUB)),
+    db: Database = Depends(get_db),
+):
+    hub_candidates = Trip2Service.get_hub_candidates(current_user.id)
+    docs = list(
+        db.history.find({"hub_id": {"$in": hub_candidates}}).sort("delivered_at", DESCENDING)
+    )
+    results = []
+    for d in docs:
+        results.append(
+            DeliveryHistoryItem(
+                id=str(d["_id"]),
+                order_id=str(d.get("order_id", "")),
+                order_number=d.get("order_number", "ORD-HIST"),
+                hub_id=str(d.get("hub_id", "")),
+                hub_name=d.get("hub_name", "Central Hub"),
+                hub_address=d.get("hub_address", ""),
+                ngo_id=str(d.get("ngo_id", "")),
+                ngo_name=d.get("ngo_name", "Partner NGO"),
+                ngo_address=d.get("ngo_address", ""),
+                total_people_served=int(d.get("total_people_served", 0)),
+                vehicle_type=d.get("vehicle_type", "Standard Van"),
+                packages=d.get("packages", []),
+                delivered_at=d.get("delivered_at") or datetime.now(timezone.utc),
+                created_at=d.get("created_at") or datetime.now(timezone.utc),
+            )
+        )
+    return results
+
