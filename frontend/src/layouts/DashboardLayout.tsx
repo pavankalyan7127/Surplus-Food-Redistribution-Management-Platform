@@ -10,6 +10,7 @@ import {
   HeartHandshake,
   UserCheck,
   History,
+  Navigation,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Badge } from '../components/common/Badge';
@@ -34,6 +35,7 @@ export const DashboardLayout: React.FC = () => {
           homePath: '/provider/surplus-donations',
           navItems: [
             { label: 'Surplus Donations', path: '/provider/surplus-donations', icon: Sparkles, badge: 'Trip 1' },
+            { label: 'Track Order', path: '/provider/track-order', icon: Navigation, badge: 'Live' },
           ],
         };
       case 'hub':
@@ -72,6 +74,7 @@ export const DashboardLayout: React.FC = () => {
             homePath: '/provider/surplus-donations',
             navItems: [
               { label: 'Surplus Donations', path: '/provider/surplus-donations', icon: Sparkles, badge: 'Trip 1' },
+              { label: 'Track Order', path: '/provider/track-order', icon: Navigation, badge: 'Live' },
             ],
           };
         }
@@ -188,7 +191,11 @@ export const DashboardLayout: React.FC = () => {
             <div className="pt-3 mt-3 border-t border-slate-100 px-3">
               <div className="text-xs text-slate-500 flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                <span className="truncate">{user?.organization_name || 'Food Provider Portal'}</span>
+                <span className="truncate">
+                  {location.pathname.startsWith('/provider')
+                    ? 'Food Provider (Open Access)'
+                    : user?.organization_name || 'Portal'}
+                </span>
               </div>
             </div>
           </div>

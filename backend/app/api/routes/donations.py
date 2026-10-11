@@ -324,3 +324,286 @@ def get_hub_donations_summary(
         "has_active_run": active_run is not None,
         "active_run_id": str(active_run["_id"]) if active_run else None,
     }
+
+
+@router.get(
+    "/track/{donation_id}",
+    summary="Track a specific donation status, hub assignment, and selective road simulation geometry",
+)
+def track_donation(
+    donation_id: str,
+    db: Database = Depends(get_db),
+):
+    """
+    Open-access tracking endpoint for Food Providers.
+    Returns:
+    - Donation batch metadata and current lifecycle status
+    - Assigned Central Hub details and coordinates
+    - Vehicle information (if scheduled/dispatched)
+    - SELECTIVE road geometry: Strictly starting at Hub and terminating at this specific
+      restaurant stop. Subsequent restaurant stops and return to hub are never exposed.
+    """
+    query = {"_id": ObjectId(donation_id)} if ObjectId.is_valid(donation_id) else {"_id": donation_id}
+    donation_doc = db.incoming_donations.find_one(query)
+    if not donation_doc:
+        donation_doc = db.inventory.find_one(query)
+    if not donation_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Donation record not found. Please verify the donation ID.",
+        )
+
+    # 1. Resolve Assigned Hub
+    hub_id = str(donation_doc.get("hubId") or donation_doc.get("hub_id") or "")
+    hub_doc = None
+    if hub_id:
+        hub_query = {"_id": ObjectId(hub_id)} if ObjectId.is_valid(hub_id) else {"_id": hub_id}
+        hub_doc = db.users.find_one(hub_query)
+
+    hub_info = {
+        "id": hub_id or "default_hub",
+        "organization_name": (hub_doc.get("organization_name") if hub_doc else None) or "Central Distribution Hub",
+        "contact_name": (hub_doc.get("contact_name") if hub_doc else None) or "Central Hub Admin",
+        "address": (hub_doc.get("address") if hub_doc else None) or "Central Logistics Depot, Coimbatore",
+        "coordinates": (
+            hub_doc.get("location", {}).get("coordinates")
+            if hub_doc and hub_doc.get("location")
+            else [76.9558, 11.0168]
+        ),
+    }
+
+    # 2. Check linked pickup run
+    pickup_run_id = str(donation_doc.get("pickupRunId") or donation_doc.get("pickup_run_id") or "")
+    pickup_run = None
+    if pickup_run_id:
+        pr_query = {"_id": ObjectId(pickup_run_id)} if ObjectId.is_valid(pickup_run_id) else {"_id": pickup_run_id}
+        pickup_run = db.pickup_runs.find_one(pr_query)
+
+    if not pickup_run:
+        # Check if any active run contains this donation ID
+        pickup_run = db.pickup_runs.find_one({
+            "donation_ids": {"$in": [str(donation_doc["_id"]), donation_id]},
+            "simulation_status": {"$in": ["NOT_STARTED", "IN_PROGRESS", "PAUSED", "COMPLETED"]},
+        })
+
+    # 3. Locate target stop & compute selective road geometry
+    pickup_run_info = None
+    if pickup_run:
+        ordered_stops = pickup_run.get("ordered_stops", [])
+        total_stops = len(ordered_stops)
+        target_stop = None
+        target_stop_idx = 1
+
+        # Match stop by donation ID
+        for s in ordered_stops:
+            s_dids = [str(did) for did in s.get("donation_ids", [])]
+            if str(donation_doc["_id"]) in s_dids or donation_id in s_dids:
+                target_stop = s
+                target_stop_idx = s.get("stop_index", 1)
+                break
+
+        # Fallback match by provider name
+        if not target_stop:
+            p_name = donation_doc.get("providerName") or donation_doc.get("provider_name")
+            for s in ordered_stops:
+                if s.get("provider_name") == p_name:
+                    target_stop = s
+                    target_stop_idx = s.get("stop_index", 1)
+                    break
+
+        # Fallback to first stop if still unmatched
+        if not target_stop and ordered_stops:
+            target_stop = ordered_stops[0]
+            target_stop_idx = 1
+
+        # Extract strictly the sub-route from Hub to target_stop
+        full_coords = pickup_run.get("route_geometry", {}).get("coordinates", [])
+        sliced_coords: List[List[float]] = []
+
+        if full_coords and target_stop:
+            target_coords = target_stop.get("coordinates")
+            if target_coords and len(target_coords) == 2:
+                # Sequence stops in visit order up to target_stop_idx
+                stops_in_order = sorted(
+                    [s for s in ordered_stops if s.get("stop_index", 1) <= target_stop_idx],
+                    key=lambda s: s.get("stop_index", 1),
+                )
+                curr_best_idx = 0
+                for s in stops_in_order:
+                    sc = s.get("coordinates")
+                    if sc and len(sc) == 2:
+                        min_d = float("inf")
+                        best_i = curr_best_idx
+                        for i in range(curr_best_idx, len(full_coords)):
+                            pt = full_coords[i]
+                            d = (pt[0] - sc[0]) ** 2 + (pt[1] - sc[1]) ** 2
+                            if d < min_d:
+                                min_d = d
+                                best_i = i
+                        curr_best_idx = best_i
+
+                # Strictly slice up to target stop index
+                sliced_coords = [list(c) for c in full_coords[: curr_best_idx + 1]]
+                target_lon, target_lat = float(target_coords[0]), float(target_coords[1])
+                if not sliced_coords or sliced_coords[-1] != [target_lon, target_lat]:
+                    sliced_coords.append([target_lon, target_lat])
+
+        # Fallback street grid routing if slice has < 2 points
+        if (not sliced_coords or len(sliced_coords) < 2) and target_stop:
+            hub_coord = hub_info["coordinates"]
+            rest_coord = target_stop.get("coordinates")
+            if hub_coord and rest_coord:
+                from app.services.routing_service import RoutingService
+                gen_coords, _, _ = RoutingService._generate_direct_street_path(
+                    (float(hub_coord[0]), float(hub_coord[1])),
+                    (float(rest_coord[0]), float(rest_coord[1]))
+                )
+                sliced_coords = gen_coords
+
+        # Compute leg distance and duration
+        from app.services.geocoding_service import calculate_haversine_distance
+        leg_dist_m = 0.0
+        for i in range(len(sliced_coords) - 1):
+            p1 = sliced_coords[i]
+            p2 = sliced_coords[i + 1]
+            leg_dist_m += calculate_haversine_distance(p1[1], p1[0], p2[1], p2[0]) * 1000.0
+        leg_dur_s = leg_dist_m / 8.33
+
+        vehicle = pickup_run.get("assigned_vehicle", {})
+        pickup_run_info = {
+            "id": str(pickup_run["_id"]),
+            "simulation_status": pickup_run.get("simulation_status", "NOT_STARTED"),
+            "assigned_vehicle": {
+                "id": str(vehicle.get("id", "")),
+                "type": vehicle.get("type", "Electric Cargo Van"),
+                "capacity": int(vehicle.get("capacity", 40)),
+            },
+            "stop_index": target_stop_idx,
+            "total_stops": total_stops,
+            "stop_status": target_stop.get("status", "PENDING") if target_stop else "PENDING",
+            "started_at": pickup_run.get("started_at"),
+            "completed_at": pickup_run.get("completed_at"),
+            "route_geometry": {
+                "type": "LineString",
+                "coordinates": sliced_coords,
+            },
+            "distance_meters": round(leg_dist_m, 1),
+            "duration_seconds": round(leg_dur_s, 1),
+        }
+
+    return {
+        "donation": serialize_donation_doc(donation_doc, db=db),
+        "hub": hub_info,
+        "has_pickup_run": pickup_run is not None,
+        "pickup_run": pickup_run_info,
+    }
+
+
+@router.post(
+    "/track/{donation_id}/request-dispatch",
+    summary="Trigger immediate pickup run planning for this donation (Manual dispatch trigger)",
+)
+def request_donation_dispatch(
+    donation_id: str,
+    db: Database = Depends(get_db),
+):
+    """
+    Allows open-access providers to trigger pickup planning if not already scheduled.
+    """
+    query = {"_id": ObjectId(donation_id)} if ObjectId.is_valid(donation_id) else {"_id": donation_id}
+    donation_doc = db.incoming_donations.find_one(query)
+    if not donation_doc:
+        raise HTTPException(status_code=404, detail="Donation record not found")
+
+    hub_id = str(donation_doc.get("hubId") or donation_doc.get("hub_id") or "")
+    if not hub_id:
+        hub = db.users.find_one({"role": "hub", "is_active": True})
+        if hub:
+            hub_id = str(hub["_id"])
+
+    if not hub_id:
+        raise HTTPException(status_code=400, detail="Central Hub not configured")
+
+    # If already linked to a run, do not plan again
+    if not donation_doc.get("pickupRunId"):
+        try:
+            from app.api.routes.trips import execute_pickup_planning
+            execute_pickup_planning(db=db, hub_id=hub_id, force=True)
+        except Exception as exc:
+            logger.info("Dispatch trigger notice: %s", exc)
+
+    return track_donation(donation_id=donation_id, db=db)
+
+
+@router.post(
+    "/track/{donation_id}/start-simulation",
+    summary="Start simulation of vehicle transit towards this restaurant",
+)
+def start_donation_simulation(
+    donation_id: str,
+    db: Database = Depends(get_db),
+):
+    """
+    Synchronizes simulation start status with the Hub run.
+    """
+    tracking = track_donation(donation_id=donation_id, db=db)
+    pickup_run = tracking.get("pickup_run")
+    if not pickup_run or not pickup_run.get("id"):
+        raise HTTPException(status_code=400, detail="Pickup run has not been planned yet")
+
+    run_id = pickup_run["id"]
+    query = {"_id": ObjectId(run_id)} if ObjectId.is_valid(run_id) else {"_id": run_id}
+    now = datetime.now(timezone.utc)
+    from pymongo import ReturnDocument
+    db.pickup_runs.find_one_and_update(
+        query,
+        {"$set": {"simulation_status": "IN_PROGRESS", "started_at": now}},
+        return_document=ReturnDocument.AFTER,
+    )
+
+    return track_donation(donation_id=donation_id, db=db)
+
+
+@router.post(
+    "/track/{donation_id}/complete-stop",
+    summary="Mark vehicle arrival and collection at this restaurant",
+)
+def complete_donation_stop(
+    donation_id: str,
+    db: Database = Depends(get_db),
+):
+    """
+    Marks this specific stop and donation as PICKED_UP when the vehicle arrives.
+    """
+    tracking = track_donation(donation_id=donation_id, db=db)
+    pickup_run = tracking.get("pickup_run")
+    if not pickup_run or not pickup_run.get("id"):
+        raise HTTPException(status_code=400, detail="No active pickup run")
+
+    run_id = pickup_run["id"]
+    stop_idx = pickup_run.get("stop_index", 1)
+    query = {"_id": ObjectId(run_id)} if ObjectId.is_valid(run_id) else {"_id": run_id}
+    run = db.pickup_runs.find_one(query)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    stops = run.get("ordered_stops", [])
+    for s in stops:
+        if s.get("stop_index") == stop_idx:
+            s["status"] = "PICKED_UP"
+            s["picked_up_at"] = datetime.now(timezone.utc)
+            break
+
+    now = datetime.now(timezone.utc)
+    d_query = {"_id": ObjectId(donation_id)} if ObjectId.is_valid(donation_id) else {"_id": donation_id}
+    db.incoming_donations.update_one(
+        d_query,
+        {"$set": {"status": DonationStatus.ARRIVED_AT_HUB.value, "picked_up_at": now, "received_at_hub_at": now, "updatedAt": now}},
+    )
+
+    db.pickup_runs.update_one(
+        query,
+        {"$set": {"ordered_stops": stops, "current_stop_index": stop_idx}},
+    )
+
+    return track_donation(donation_id=donation_id, db=db)

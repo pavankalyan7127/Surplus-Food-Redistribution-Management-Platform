@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import {
   CreateDonationPayload,
+  DonationTrackingResponse,
   HubSummary,
   IncomingDonation,
   PickupRun,
@@ -95,4 +96,26 @@ export const trip1Api = {
     const res = await apiClient.get('/auth/geocode', { params: { address } });
     return res.data;
   },
+
+  // Open-Access Food Provider Tracking
+  trackDonation: async (donationId: string): Promise<DonationTrackingResponse> => {
+    const res = await apiClient.get<DonationTrackingResponse>(`/donations/track/${donationId}`);
+    return res.data;
+  },
+
+  requestDonationDispatch: async (donationId: string): Promise<DonationTrackingResponse> => {
+    const res = await apiClient.post<DonationTrackingResponse>(`/donations/track/${donationId}/request-dispatch`);
+    return res.data;
+  },
+
+  startDonationSimulation: async (donationId: string): Promise<DonationTrackingResponse> => {
+    const res = await apiClient.post<DonationTrackingResponse>(`/donations/track/${donationId}/start-simulation`);
+    return res.data;
+  },
+
+  completeDonationStop: async (donationId: string): Promise<DonationTrackingResponse> => {
+    const res = await apiClient.post<DonationTrackingResponse>(`/donations/track/${donationId}/complete-stop`);
+    return res.data;
+  },
 };
+

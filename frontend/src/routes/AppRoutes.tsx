@@ -8,6 +8,7 @@ import { DashboardLayout } from '../layouts/DashboardLayout';
 import { HubDashboard } from '../pages/hub/HubDashboard';
 import { NgoDashboard } from '../pages/ngo/NgoDashboard';
 import { SurplusDonationsPage } from '../pages/provider/SurplusDonationsPage';
+import { TrackOrderPage } from '../pages/provider/TrackOrderPage';
 import { IncomingCollectionsPage } from '../pages/hub/IncomingCollectionsPage';
 import { InventoryStagingPage } from '../pages/hub/InventoryStagingPage';
 import { ViewNgoOrdersPage } from '../pages/hub/ViewNgoOrdersPage';
@@ -38,8 +39,9 @@ export const AppRoutes: React.FC = () => {
 
       {/* Dashboards wrapped with DashboardLayout */}
       <Route element={<DashboardLayout />}>
-        {/* Open-Access Food Provider Donation Route */}
+        {/* Open-Access Food Provider Routes */}
         <Route path="/provider/surplus-donations" element={<SurplusDonationsPage />} />
+        <Route path="/provider/track-order" element={<TrackOrderPage />} />
 
         <Route
           path="/hub/dashboard"

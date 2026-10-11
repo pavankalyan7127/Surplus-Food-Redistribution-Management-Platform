@@ -125,3 +125,40 @@ export interface PickupRun {
   started_at?: string;
   completed_at?: string;
 }
+
+export interface TrackingHubInfo {
+  id: string;
+  organization_name: string;
+  contact_name: string;
+  address: string;
+  coordinates: [number, number]; // [lon, lat]
+}
+
+export interface TrackingPickupRunInfo {
+  id: string;
+  simulation_status: 'NOT_STARTED' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
+  assigned_vehicle: {
+    id: string;
+    type: string;
+    capacity: number;
+  };
+  stop_index: number;
+  total_stops: number;
+  stop_status: 'PENDING' | 'PICKED_UP';
+  started_at?: string;
+  completed_at?: string;
+  route_geometry: {
+    type: string;
+    coordinates: [number, number][];
+  };
+  distance_meters: number;
+  duration_seconds: number;
+}
+
+export interface DonationTrackingResponse {
+  donation: IncomingDonation;
+  hub: TrackingHubInfo;
+  has_pickup_run: boolean;
+  pickup_run: TrackingPickupRunInfo | null;
+}
+

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Sparkles,
   MapPin,
@@ -49,14 +50,14 @@ const PROVIDER_TYPES = [
 ];
 
 export const SurplusDonationsPage: React.FC = () => {
-  // Provider Identity & Location State (saved locally for ease of use)
-  const [providerName, setProviderName] = useState(() => localStorage.getItem('sf_prov_name') || '');
-  const [providerType, setProviderType] = useState<'restaurant' | 'bakery' | 'mess'>(
-    () => (localStorage.getItem('sf_prov_type') as 'restaurant' | 'bakery' | 'mess') || 'restaurant'
-  );
-  const [pickupAddress, setPickupAddress] = useState(() => localStorage.getItem('sf_prov_addr') || '');
+  const navigate = useNavigate();
 
-  // Food Batch Form State
+  // Provider Identity & Location State (strictly blank - no default or predefined values)
+  const [providerName, setProviderName] = useState('');
+  const [providerType, setProviderType] = useState<'restaurant' | 'bakery' | 'mess'>('restaurant');
+  const [pickupAddress, setPickupAddress] = useState('');
+
+  // Food Batch Form State (all start empty)
   const [foodName, setFoodName] = useState('');
   const [foodCategory, setFoodCategory] = useState<FoodCategory>('Cooked Meals');
   const [dietaryType, setDietaryType] = useState<DietaryType>('Vegetarian');
@@ -71,21 +72,18 @@ export const SurplusDonationsPage: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Set default prep date/time to now (local datetime-local format)
+  // Set default prep date/time to now (local datetime-local format) and clear any legacy cached keys
   useEffect(() => {
+    localStorage.removeItem('sf_prov_name');
+    localStorage.removeItem('sf_prov_addr');
+    localStorage.removeItem('sf_prov_type');
+
     const now = new Date();
     const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
       .toISOString()
       .slice(0, 16);
     setPrepDateTime(localIso);
   }, []);
-
-  // Save provider details in localStorage
-  useEffect(() => {
-    if (providerName) localStorage.setItem('sf_prov_name', providerName);
-    if (providerType) localStorage.setItem('sf_prov_type', providerType);
-    if (pickupAddress) localStorage.setItem('sf_prov_addr', pickupAddress);
-  }, [providerName, providerType, pickupAddress]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,8 +129,22 @@ export const SurplusDonationsPage: React.FC = () => {
         pickup_notes: pickupNotes.trim() || undefined,
       });
 
+      // Save active tracking ID & history in localStorage for open-access session
+      localStorage.setItem('sf_active_tracking_id', res.id);
+      try {
+        const existingStr = localStorage.getItem('sf_recent_donations');
+        const existingList = existingStr ? JSON.parse(existingStr) : [];
+        const updatedList = [
+          { id: res.id, food_name: res.food_name, people_served: res.people_served, created_at: res.created_at },
+          ...existingList.filter((item: { id: string }) => item.id !== res.id),
+        ].slice(0, 5);
+        localStorage.setItem('sf_recent_donations', JSON.stringify(updatedList));
+      } catch {
+        // ignore
+      }
+
       setSuccessMessage(
-        `Surplus batch "${res.food_name}" (${res.people_served} servings) declared successfully for ${providerName}! Address geocoded & linked to Central Hub. Status: READY_FOR_PICKUP.`
+        `Surplus batch "${res.food_name}" (${res.people_served} servings) declared successfully! Redirecting to live tracking...`
       );
 
       // Reset food fields
@@ -140,6 +152,11 @@ export const SurplusDonationsPage: React.FC = () => {
       setPeopleServed('');
       setDescription('');
       setPickupNotes('');
+
+      // Redirect immediately to the Track Order page
+      setTimeout(() => {
+        navigate(`/provider/track-order?id=${res.id}`);
+      }, 700);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { detail?: string } }; message?: string };
       const detail =
@@ -320,7 +337,7 @@ export const SurplusDonationsPage: React.FC = () => {
           <div className="flex items-start gap-2 p-3 bg-emerald-50 border border-emerald-200/60 rounded-xl text-xs text-emerald-800">
             <Info className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
             <span>
-              Clicking <strong>READY FOR DONATION</strong> indicates the surplus food is packed, hygienically stored, and awaiting collection. Status initializes as <code>READY_FOR_PICKUP</code>.
+              Clicking <strong>READY FOR PICKUP</strong> indicates your surplus batch is packed, stored safely, and awaiting collection. You will be redirected immediately to the live <strong>Track Order</strong> page.
             </span>
           </div>
 
@@ -333,7 +350,7 @@ export const SurplusDonationsPage: React.FC = () => {
             className="w-full py-3 text-sm font-bold shadow-md hover:shadow-lg uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700"
           >
             <CheckCircle2 className="w-5 h-5 mr-2" />
-            READY FOR DONATION
+            READY FOR PICKUP
           </Button>
         </form>
       </Card>
